@@ -1,0 +1,12 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "ShuttleSplit - Badminton Calculator",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "ShuttleSplit",
+  "start_url": "https://hazzaxy-maker.github.io/badminton-game-calculator/",
+  "theme_color": "#062019",
+  "description": "A utility calculator for managing badminton sessions and costs."
+}
