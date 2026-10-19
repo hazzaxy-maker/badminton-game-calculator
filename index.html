@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#062019">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>ShuttleSplit - Badminton Session & Game Cost Calculator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Chakra Petch for sporty numbers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #071410;
+            color: #f0fdf4;
+            overscroll-behavior-y: none;
+            user-select: none;
+        }
+        input, textarea, select {
+            user-select: text;
+        }
+        .font-sport {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+        /* Subtle badminton court line pattern background */
+        .court-bg {
+            background-color: #091914;
+            background-image: 
+                linear-gradient(rgba(16, 185, 129, 0.05) 1.5px, transparent 1.5px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.05) 1.5px, transparent 1.5px);
+            background-size: 40px 40px;
+        }
+        /* Custom number input without spin buttons */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        .shuttle-glow {
+            box-shadow: 0 0 25px -5px rgba(163, 230, 53, 0.3);
+        }
+        /* Smooth tab transitions */
+        .tab-pane {
+            animation: fadeIn 0.18s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body class="court-bg min-h-screen pb-28 selection:bg-lime-400 selection:text-emerald-950">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Top Android App Bar -->
+    <header class="bg-emerald-950/95 border-b border-emerald-800/60 sticky top-0 z-30 backdrop-blur-md">
+        <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+                <!-- App Icon (Ready for Android Adaptive Icon look) -->
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-lime-400 to-emerald-500 p-0.5 shadow-lg shuttle-glow flex items-center justify-center shrink-0">
+                    <div class="w-full h-full bg-emerald-950 rounded-[14px] flex items-center justify-center">
+                        <svg class="w-6 h-6 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 18a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor" transform="translate(0, -3) scale(0.85)"/>
+                            <path d="M9.5 14.5L5 4l4.5 2L12 3l2.5 3L19 4l-4.5 10.5"/>
+                            <path d="M7.5 9.5h9"/>
+                            <path d="M9 14.5h6"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-lime-400/20 text-lime-300 border border-lime-400/30">ShuttleSplit</span>
+                        <span class="text-[11px] text-emerald-300/80 truncate" id="headerDateDisplay"></span>
+                    </div>
+                    <!-- Editable Club Name Trigger -->
+                    <button onclick="switchBottomTab('tabSettings')" class="text-left group flex items-center gap-1.5 max-w-full">
+                        <h1 id="headerClubName" class="text-base sm:text-lg font-extrabold tracking-tight text-white truncate">
+                            Your Badminton Club
+                        </h1>
+                        <i class="ph ph-pencil-simple text-xs text-lime-400 opacity-80 group-hover:opacity-100 shrink-0" title="Edit Club Name"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Actions & Language Toggle -->
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button onclick="toggleLanguage()" class="px-2.5 py-2 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 text-lime-300 border border-lime-400/40 transition flex items-center gap-1 text-xs font-extrabold" title="Switch Language (EN / BM)">
+                    <i class="ph ph-translate text-sm"></i>
+                    <span id="langBadgeText">EN</span>
+                </button>
+                <button onclick="saveSessionToHistory()" class="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-lime-300 border border-emerald-700/60 transition flex items-center gap-1 text-xs font-semibold" title="Save Session">
+                    <i class="ph ph-floppy-disk text-base"></i>
+                    <span class="hidden sm:inline" data-i18n="btnSave">Save</span>
+                </button>
+                <button onclick="openResetModal()" class="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 transition" title="Reset Calculation">
+                    <i class="ph ph-arrow-counter-clockwise text-base"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sticky Live Scoreboard / Price Banner -->
+    <div class="bg-gradient-to-r from-emerald-900/95 via-teal-900/95 to-emerald-900/95 border-b border-lime-400/30 sticky top-[61px] z-20 backdrop-blur-md shadow-lg">
+        <div class="max-w-xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-lime-300" id="activeModeBadge">EQUAL SPLIT</span>
+                </div>
+                <p class="text-xs text-emerald-200/90" id="mainPriceLabel">Fee Per Player (Court + Shuttle):</p>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl sm:text-3xl font-extrabold font-sport text-lime-400 leading-none" id="displayFeePerPerson">
+                    RM 0.00
+                </div>
+                <span class="text-[11px] text-emerald-300" id="displayExactFeeNote">Exact: RM 0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container Sized for Mobile App & Tablet -->
+    <main class="max-w-xl mx-auto px-4 pt-4">
+
+        <!-- ========================================== -->
+        <!-- TAB 1: COST CALCULATOR (COURT + SHUTTLE)   -->
+        <!-- ========================================== -->
+        <div id="tabCalc" class="tab-pane space-y-4">
+
+            <!-- 4 Mini Summary Cards -->
+            <section class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-3">
+                    <div class="flex items-center justify-between text-emerald-400 text-[11px] mb-0.5">
+                        <span data-i18n="cardCourtCost">Court Cost</span>
+                        <i class="ph ph-squares-four text-sm"></i>
+                    </div>
+                    <p class="text-base font-bold font-sport text-white" id="summaryCourtTotal">RM 0.00</p>
+                    <p class="text-[10px] text-emerald-300/80" id="summaryCourtPerPerson">RM 0.00 / pax</p>
+                </div>
+
+                <div class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-3">
+                    <div class="flex items-center justify-between text-lime-300 text-[11px] mb-0.5">
+                        <span data-i18n="cardShuttleCost">Shuttle Cost</span>
+                        <i class="ph ph-feather text-sm"></i>
+                    </div>
+                    <p class="text-base font-bold font-sport text-white" id="summaryShuttleTotal">RM 0.00</p>
+                    <p class="text-[10px] text-emerald-300/80" id="summaryShuttlePerPerson">RM 0.00 / pax</p>
+                </div>
+
+                <div class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-3">
+                    <div class="flex items-center justify-between text-teal-300 text-[11px] mb-0.5">
+                        <span data-i18n="cardOneGameCost">1 Game Cost</span>
+                        <i class="ph ph-racquet text-sm"></i>
+                    </div>
+                    <p class="text-base font-bold font-sport text-lime-300" id="summaryPerGamePerson">RM 0.00</p>
+                    <p class="text-[10px] text-emerald-300/80" id="summaryPerGameDetail">Per player / game</p>
+                </div>
+
+                <div class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-3">
+                    <div class="flex items-center justify-between text-amber-300 text-[11px] mb-0.5">
+                        <span data-i18n="cardTotalCost">Total Cost</span>
+                        <i class="ph ph-wallet text-sm"></i>
+                    </div>
+                    <p class="text-base font-bold font-sport text-amber-300" id="summaryGrandTotal">RM 0.00</p>
+                    <p class="text-[10px] text-emerald-300/80" id="summarySurplusNote">Club Fund: +RM 0.00</p>
+                </div>
+            </section>
+
+            <!-- Main Split Mode Selector -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-3.5 shadow-lg">
+                <label class="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2" data-i18n="lblSplitMethod">
+                    Player Cost Split Method
+                </label>
+                <div class="grid grid-cols-2 gap-2 bg-emerald-900/70 p-1 rounded-xl border border-emerald-700/60">
+                    <button id="tabModeEqual" onclick="switchSplitMode('equal')" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-lime-400 text-emerald-950 transition flex items-center justify-center gap-1.5 shadow">
+                        <i class="ph ph-users-three text-base"></i>
+                        <span data-i18n="btnModeEqual">Equal Split</span>
+                    </button>
+                    <button id="tabModePerGame" onclick="switchSplitMode('pergame')" class="py-2.5 px-3 rounded-lg font-bold text-xs text-emerald-200 hover:text-white transition flex items-center justify-center gap-1.5">
+                        <i class="ph ph-trophy text-base"></i>
+                        <span data-i18n="btnModePerGame">Pay Per Game</span>
+                    </button>
+                </div>
+                <p class="text-[11px] text-emerald-300/80 mt-2 px-1" id="formulaExplanation">
+                    Formula: (Court Fee + Shuttle Cost) ÷ Total Players
+                </p>
+            </section>
+
+            <!-- CARD 1: COURT RENTAL COST -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-3.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                            <i class="ph ph-squares-four text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-sm" data-i18n="sec1Title">1. Court Rental Fee</h3>
+                            <p class="text-[11px] text-emerald-300/70" data-i18n="sec1Sub">Calculate by hourly rate or flat total</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-emerald-900/80 p-1 rounded-xl border border-emerald-700/60 flex text-xs">
+                        <button id="btnCourtModeHourly" onclick="setCourtMode('hourly')" class="px-2.5 py-1 rounded-lg font-semibold bg-lime-400 text-emerald-950 transition" data-i18n="btnHourly">
+                            Hourly
+                        </button>
+                        <button id="btnCourtModeFlat" onclick="setCourtMode('flat')" class="px-2.5 py-1 rounded-lg font-semibold text-emerald-200 hover:text-white transition" data-i18n="btnFlat">
+                            Flat Total
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hourly Inputs -->
+                <div id="courtHourlyInputs" class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] text-emerald-300 mb-1" data-i18n="lblRateHour">RM / Hour</label>
+                        <input type="number" id="courtRatePerHour" value="20" min="0" step="1" oninput="calculateAll()" class="w-full bg-emerald-900/60 border border-emerald-700 rounded-xl px-2.5 py-2 text-white font-sport text-base font-bold text-center focus:outline-none focus:border-lime-400">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-emerald-300 mb-1" data-i18n="lblDuration">Duration (Hrs)</label>
+                        <div class="flex items-center bg-emerald-900/60 border border-emerald-700 rounded-xl overflow-hidden">
+                            <button onclick="adjustValue('courtHours', -0.5, 0.5)" class="px-2.5 py-2 text-emerald-300 active:bg-emerald-700 font-bold">-</button>
+                            <input type="number" id="courtHours" value="2" min="0.5" step="0.5" oninput="calculateAll()" class="w-full bg-transparent text-center text-white font-sport text-base font-bold focus:outline-none">
+                            <button onclick="adjustValue('courtHours', 0.5, 0.5)" class="px-2.5 py-2 text-emerald-300 active:bg-emerald-700 font-bold">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-emerald-300 mb-1" data-i18n="lblNumCourts">No. of Courts</label>
+                        <div class="flex items-center bg-emerald-900/60 border border-emerald-700 rounded-xl overflow-hidden">
+                            <button onclick="adjustValue('courtCount', -1, 1)" class="px-2.5 py-2 text-emerald-300 active:bg-emerald-700 font-bold">-</button>
+                            <input type="number" id="courtCount" value="2" min="1" step="1" oninput="calculateAll()" class="w-full bg-transparent text-center text-white font-sport text-base font-bold focus:outline-none">
+                            <button onclick="adjustValue('courtCount', 1, 1)" class="px-2.5 py-2 text-emerald-300 active:bg-emerald-700 font-bold">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flat Total Input -->
+                <div id="courtFlatInputs" class="hidden">
+                    <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblFlatCourtTotal">Total Court Rental Fee (RM)</label>
+                    <input type="number" id="courtFlatTotal" value="80" min="0" step="1" oninput="calculateAll()" class="w-full bg-emerald-900/60 border border-emerald-700 rounded-xl px-3.5 py-2 text-white font-sport text-lg font-bold focus:outline-none focus:border-lime-400">
+                </div>
+
+                <!-- Extra Cost (Drinks / Lights) -->
+                <div class="pt-2.5 border-t border-emerald-800/60 flex items-center justify-between gap-2">
+                    <span class="text-xs text-emerald-300" data-i18n="lblExtraCost">Extra Cost (Drinks/Lights/Misc) RM:</span>
+                    <input type="number" id="extraCost" value="0" min="0" step="1" oninput="calculateAll()" class="w-24 bg-emerald-900/60 border border-emerald-700 rounded-xl px-2.5 py-1.5 text-right text-white font-sport font-bold focus:outline-none focus:border-lime-400">
+                </div>
+
+                <div class="bg-emerald-900/50 border border-emerald-700/50 rounded-xl px-3 py-2 flex items-center justify-between">
+                    <span class="text-xs text-emerald-200" data-i18n="lblCourtSubtotal">Total Court Cost:</span>
+                    <span class="text-base font-extrabold font-sport text-emerald-300" id="cardCourtSubtotal">RM 80.00</span>
+                </div>
+            </section>
+
+            <!-- CARD 2: SHUTTLECOCK COST (PER PCS) -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-3.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-lime-400/20 border border-lime-400/40 flex items-center justify-center text-lime-300">
+                            <i class="ph ph-feather text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-sm" data-i18n="sec2Title">2. Shuttlecock Cost (Per Pcs)</h3>
+                            <p class="text-[11px] text-emerald-300/70" data-i18n="sec2Sub">Price per piece × total pieces used</p>
+                        </div>
+                    </div>
+
+                    <button onclick="toggleTubeHelper()" class="text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-lime-300 border border-lime-400/30 transition flex items-center gap-1">
+                        <i class="ph ph-calculator"></i>
+                        <span data-i18n="btnTubeCalc">Tube Calc</span>
+                    </button>
+                </div>
+
+                <!-- Mini Calculator: 1 Tube (12 Pcs) -->
+                <div id="tubeHelperBox" class="hidden p-3 rounded-xl bg-emerald-900/80 border border-lime-400/40 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-lime-300" data-i18n="lblTubeCalcTitle">Calculate From 1 Tube (12 Pcs)</span>
+                        <button onclick="toggleTubeHelper()" class="text-emerald-300 hover:text-white text-xs"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1">
+                            <label class="block text-[10px] text-emerald-200 mb-0.5" data-i18n="lblTubePrice">1 Tube Price (RM)</label>
+                            <input type="number" id="tubePriceInput" value="108" min="0" step="1" oninput="updatePriceFromTube()" class="w-full bg-emerald-950 border border-emerald-700 rounded-lg px-2.5 py-1.5 text-sm text-white font-sport font-bold">
+                        </div>
+                        <div class="text-emerald-300 pt-3 font-bold text-xs">÷ 12 =</div>
+                        <div class="flex-1">
+                            <label class="block text-[10px] text-emerald-200 mb-0.5" data-i18n="lblPricePerPcsShort">Price / Pcs</label>
+                            <div class="bg-emerald-950/70 border border-lime-400/40 rounded-lg px-2.5 py-1.5 text-sm text-lime-300 font-sport font-bold" id="tubeCalculatedPerPcs">RM 9.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblShuttlePricePcs">Price Per Piece (RM/Pcs)</label>
+                        <input type="number" id="shuttlePricePerPcs" value="9.00" min="0" step="0.10" oninput="calculateAll()" class="w-full bg-emerald-900/60 border border-emerald-700 rounded-xl px-3 py-2.5 text-white font-sport text-lg font-bold focus:outline-none focus:border-lime-400">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblShuttleUsedPcs">Shuttles Used (Pcs)</label>
+                        <div class="flex items-center bg-emerald-900/60 border border-emerald-700 rounded-xl overflow-hidden">
+                            <button onclick="adjustValue('shuttleUsedCount', -1, 0)" class="px-3.5 py-2.5 text-lime-300 active:bg-emerald-700 font-bold text-lg">-</button>
+                            <input type="number" id="shuttleUsedCount" value="10" min="0" step="1" oninput="calculateAll()" class="w-full bg-transparent text-center text-white font-sport text-lg font-bold focus:outline-none">
+                            <button onclick="adjustValue('shuttleUsedCount', 1, 0)" class="px-3.5 py-2.5 text-lime-300 active:bg-emerald-700 font-bold text-lg">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Shuttle Price Presets -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] text-emerald-400" data-i18n="lblPreset">Preset:</span>
+                    <button onclick="setShuttlePrice(7.50)" class="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-900 active:bg-emerald-700 text-emerald-200 border border-emerald-700/60">RM7.50</button>
+                    <button onclick="setShuttlePrice(8.50)" class="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-900 active:bg-emerald-700 text-emerald-200 border border-emerald-700/60">RM8.50</button>
+                    <button onclick="setShuttlePrice(9.00)" class="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-900 active:bg-emerald-700 text-emerald-200 border border-emerald-700/60">RM9.00</button>
+                    <button onclick="setShuttlePrice(10.00)" class="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-900 active:bg-emerald-700 text-emerald-200 border border-emerald-700/60">RM10.00</button>
+                </div>
+
+                <div class="bg-emerald-900/50 border border-emerald-700/50 rounded-xl px-3 py-2 flex items-center justify-between">
+                    <span class="text-xs text-emerald-200" id="shuttleCalcBreakdownText">10 pcs × RM 9.00:</span>
+                    <span class="text-base font-extrabold font-sport text-lime-300" id="cardShuttleSubtotal">RM 90.00</span>
+                </div>
+            </section>
+
+            <!-- CARD 3: NUMBER OF PLAYERS & PER GAME BREAKDOWN -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-semibold text-emerald-300" data-i18n="lblTotalPlayers">Total Players</label>
+                            <button onclick="syncPlayerCountWithList()" class="text-[10px] text-lime-300 underline">
+                                <span data-i18n="btnSyncRoster">Sync List</span> (<span id="rosterCountLabel">8</span>)
+                            </button>
+                        </div>
+                        <div class="flex items-center bg-emerald-900/60 border border-emerald-700 rounded-xl overflow-hidden">
+                            <button onclick="adjustPlayers(-1)" class="px-3.5 py-2 text-lime-300 active:bg-emerald-700 font-bold text-lg">-</button>
+                            <input type="number" id="totalPlayersInput" value="8" min="1" step="1" oninput="calculateAll()" class="w-full bg-transparent text-center text-white font-sport text-lg font-bold focus:outline-none">
+                            <button onclick="adjustPlayers(1)" class="px-3.5 py-2 text-lime-300 active:bg-emerald-700 font-bold text-lg">+</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-emerald-300 mb-1" data-i18n="lblRounding">Fee Rounding</label>
+                        <select id="roundingMode" onchange="calculateAll()" class="w-full bg-emerald-900/60 border border-emerald-700 rounded-xl px-2.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-lime-400">
+                            <option value="none" data-i18n="optRoundNone">Exact Amount (Cents)</option>
+                            <option value="up10" data-i18n="optRound10">Round Up RM 0.10</option>
+                            <option value="up50" data-i18n="optRound50">Round Up RM 0.50</option>
+                            <option value="up100" selected data-i18n="optRound100">Round Up RM 1.00</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 1 Game Cost Breakdown Panel (Per Match) -->
+                <div id="perGameBreakdownPanel" class="bg-gradient-to-br from-emerald-900/70 to-teal-950/80 border border-lime-400/40 rounded-xl p-3.5 space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-lime-300 flex items-center gap-1.5">
+                            <i class="ph ph-racquet text-sm"></i>
+                            <span data-i18n="lblPerGamePanelTitle">Cost Breakdown Per Game (Match)</span>
+                        </span>
+                        <select id="playersPerGameSelect" onchange="calculateAll()" class="bg-emerald-950 border border-emerald-700 rounded-lg px-2 py-1 text-lime-300 font-bold text-[11px] focus:outline-none">
+                            <option value="4" selected data-i18n="optDoubles">Doubles (4 Pax/Game)</option>
+                            <option value="2" data-i18n="optSingles">Singles (2 Pax/Game)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="bg-emerald-950/80 border border-emerald-800 rounded-xl p-2.5">
+                            <label class="block text-[11px] text-emerald-300 mb-1" data-i18n="lblTotalGamesSession">Total Games Played</label>
+                            <div class="flex items-center bg-emerald-900/70 border border-emerald-700 rounded-lg overflow-hidden">
+                                <button onclick="adjustValue('totalGamesPlayed', -1, 1)" class="px-2.5 py-1 text-emerald-300 font-bold">-</button>
+                                <input type="number" id="totalGamesPlayed" value="6" min="1" step="1" oninput="calculateAll()" class="w-full bg-transparent text-center text-white font-sport font-bold text-sm">
+                                <button onclick="adjustValue('totalGamesPlayed', 1, 1)" class="px-2.5 py-1 text-emerald-300 font-bold">+</button>
+                            </div>
+                            <p class="text-[10px] text-emerald-400 mt-1" id="singleGameCourtFormulaText">Court/Game: RM 13.33</p>
+                        </div>
+
+                        <div class="bg-emerald-950/80 border border-emerald-800 rounded-xl p-2.5">
+                            <label class="block text-[11px] text-emerald-300 mb-1" data-i18n="lblShuttlesPerGame">Shuttles / 1 Game (Pcs)</label>
+                            <div class="flex items-center bg-emerald-900/70 border border-emerald-700 rounded-lg overflow-hidden">
+                                <button onclick="adjustValue('shuttlesPerSingleGame', -1, 1)" class="px-2.5 py-1 text-lime-300 font-bold">-</button>
+                                <input type="number" id="shuttlesPerSingleGame" value="2" min="1" step="1" oninput="calculateAll()" class="w-full bg-transparent text-center text-white font-sport font-bold text-sm">
+                                <button onclick="adjustValue('shuttlesPerSingleGame', 1, 1)" class="px-2.5 py-1 text-lime-300 font-bold">+</button>
+                            </div>
+                            <p class="text-[10px] text-emerald-400 mt-1" id="singleGameShuttleCostText">Shuttle: RM 18.00</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-lime-400/15 border border-lime-400/40 rounded-xl px-3 py-2 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-lime-300 block" data-i18n="lblCostPerPlayerOneGame">Cost Per Player / 1 Game:</span>
+                            <span class="text-[10px] text-emerald-200" id="singleGameTotalMatchText">Total 1 Game: RM 31.33</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl font-extrabold font-sport text-lime-300" id="singleGameFeePerPlayerDisplay">RM 7.83</span>
+                            <span class="text-[10px] text-emerald-300 block" id="singleGameCourtCostDisplay">Court: RM 13.33</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: PLAYER LIST & PAYMENT STATUS        -->
+        <!-- ========================================== -->
+        <div id="tabPlayers" class="tab-pane hidden space-y-4">
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-3.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div>
+                        <h3 class="font-bold text-white text-sm" data-i18n="tabPlayersTitle">Player Roster & Collection</h3>
+                        <p class="text-[11px] text-emerald-300/70" data-i18n="tabPlayersSub">Mark players who have paid their share</p>
+                    </div>
+                    <div class="px-3 py-1.5 rounded-xl bg-emerald-900/90 border border-emerald-700 text-xs">
+                        <span class="text-emerald-300" data-i18n="lblCollected">Collected:</span>
+                        <span class="font-bold font-sport text-lime-400 ml-1" id="collectedAmountDisplay">RM 0.00</span>
+                        <span class="text-emerald-400 text-[11px]" id="collectedCountDisplay">(0/8)</span>
+                    </div>
+                </div>
+
+                <!-- Add Player -->
+                <div class="flex gap-2">
+                    <input type="text" id="newPlayerNameInput" onkeydown="if(event.key==='Enter') addPlayer()" placeholder="Add player name..." class="flex-1 bg-emerald-900/60 border border-emerald-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-emerald-400/60 focus:outline-none focus:border-lime-400">
+                    <button onclick="addPlayer()" class="px-4 py-2.5 rounded-xl bg-lime-400 active:bg-lime-300 text-emerald-950 font-bold text-xs transition flex items-center gap-1 shrink-0">
+                        <i class="ph ph-user-plus text-base"></i>
+                        <span data-i18n="btnAddPlayer">Add</span>
+                    </button>
+                </div>
+
+                <!-- Quick Mark All Buttons -->
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <button onclick="markAllPaid(true)" class="flex-1 py-1.5 rounded-lg bg-emerald-900/80 hover:bg-emerald-800 text-lime-300 border border-emerald-700/60 text-xs font-semibold transition" data-i18n="btnMarkAllPaid">
+                        Mark All Paid
+                    </button>
+                    <button onclick="markAllPaid(false)" class="py-1.5 px-3 rounded-lg bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 border border-emerald-800 text-xs transition" data-i18n="btnResetStatus">
+                        Reset Status
+                    </button>
+                </div>
+
+                <!-- Player List Container -->
+                <div id="playerListContainer" class="space-y-2"></div>
+            </section>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: WHATSAPP RECEIPT & ANDROID SHARE    -->
+        <!-- ========================================== -->
+        <div id="tabReceipt" class="tab-pane hidden space-y-4">
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-3.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div>
+                        <h3 class="font-bold text-white text-sm" data-i18n="tabReceiptTitle">Official Receipt & WhatsApp Share</h3>
+                        <p class="text-[11px] text-emerald-300/70" data-i18n="tabReceiptSub">Share directly via Android share menu or copy text</p>
+                    </div>
+                </div>
+
+                <!-- Native Android Share & Copy Buttons -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button onclick="shareNativeAndroid()" class="py-3 px-3 rounded-xl bg-gradient-to-r from-lime-400 to-emerald-400 active:from-lime-300 text-emerald-950 font-extrabold text-xs shadow-lg flex items-center justify-center gap-1.5">
+                        <i class="ph ph-share-network text-base"></i>
+                        <span data-i18n="btnShareAndroid">Share Now (Android)</span>
+                    </button>
+                    <button onclick="copyWhatsappSummary()" class="py-3 px-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-lime-300 border border-lime-400/40 font-bold text-xs flex items-center justify-center gap-1.5">
+                        <i class="ph ph-copy text-base"></i>
+                        <span data-i18n="btnCopyReceipt">Copy Receipt Text</span>
+                    </button>
+                </div>
+
+                <textarea id="whatsappPreviewText" readonly rows="13" class="w-full bg-emerald-900/40 border border-emerald-700/80 rounded-xl p-3 text-xs font-mono text-emerald-100 focus:outline-none"></textarea>
+            </section>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: CLUB SETTINGS, LANGUAGE & HISTORY   -->
+        <!-- ========================================== -->
+        <div id="tabSettings" class="tab-pane hidden space-y-4">
+
+            <!-- Language Selection Card -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-translate text-lime-400 text-lg"></i>
+                        <h3 class="font-bold text-white text-sm" data-i18n="lblAppLanguage">App & Receipt Language / Bahasa</h3>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 bg-emerald-900/70 p-1 rounded-xl border border-emerald-700/60">
+                    <button id="btnLangEN" onclick="setLanguage('en')" class="py-2 px-3 rounded-lg font-bold text-xs bg-lime-400 text-emerald-950 transition">
+                        🇬🇧 English (Default)
+                    </button>
+                    <button id="btnLangMS" onclick="setLanguage('ms')" class="py-2 px-3 rounded-lg font-bold text-xs text-emerald-200 hover:text-white transition">
+                        🇲🇾 Bahasa Melayu
+                    </button>
+                </div>
+            </section>
+
+            <!-- Generic Club Profile Settings -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-3">
+                <div class="flex items-center gap-2">
+                    <i class="ph ph-gear-six text-lime-400 text-lg"></i>
+                    <h3 class="font-bold text-white text-sm" data-i18n="settingsTitle">Club & Session Settings (Generic)</h3>
+                </div>
+                <p class="text-xs text-emerald-300/80" data-i18n="settingsSub">
+                    Customize your club name, court venue, and treasurer payment details. Saved automatically on your device.
+                </p>
+
+                <div class="space-y-2.5">
+                    <div>
+                        <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblClubName">Badminton Club / Group Name</label>
+                        <input type="text" id="clubNameInput" value="Your Badminton Club" oninput="calculateAll()" placeholder="e.g. Smashers Badminton Club" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-lime-400">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblSessionDate">Session Date</label>
+                            <input type="date" id="sessionDate" onchange="calculateAll()" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-lime-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblSessionTime">Play Time</label>
+                            <input type="text" id="sessionTime" value="9:00 PM - 11:00 PM" oninput="calculateAll()" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-lime-400">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblVenue">Court / Hall Name</label>
+                        <input type="text" id="sessionVenue" value="Main Badminton Arena" oninput="calculateAll()" placeholder="Enter court location" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-lime-400">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblBankAccount">Bank Account / DuitNow QR Info</label>
+                        <input type="text" id="paymentAccountInfo" value="Maybank 1620-XXXX-XXXX (Treasurer) / DuitNow QR" oninput="calculateAll()" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-lime-400">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-emerald-300 mb-1" data-i18n="lblFooterNote">Receipt Footer Note</label>
+                        <input type="text" id="paymentExtraNote" value="Thank you everyone! See you next game 🏸🔥" oninput="calculateAll()" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-lime-400">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Saved Session History -->
+            <section class="bg-emerald-950/90 border border-emerald-800/80 rounded-2xl p-4 shadow-lg space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-clock-counter-clockwise text-amber-300 text-lg"></i>
+                        <h3 class="font-bold text-white text-sm" data-i18n="historyTitle">Saved Session History</h3>
+                    </div>
+                    <button onclick="saveSessionToHistory()" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-lime-400 text-emerald-950" data-i18n="btnSaveCurrentSession">
+                        + Save Current Session
+                    </button>
+                </div>
+                <div id="historyListContainer" class="space-y-2 text-xs text-emerald-300"></div>
+            </section>
+
+            <!-- Android Google Play Store Publishing Guide -->
+            <section class="bg-gradient-to-br from-emerald-900/80 to-teal-950 border border-lime-400/40 rounded-2xl p-4 shadow-lg space-y-2.5">
+                <div class="flex items-center gap-2 text-lime-300">
+                    <i class="ph ph-google-play-logo text-xl"></i>
+                    <h3 class="font-bold text-sm" data-i18n="androidGuideTitle">Android Publishing Guide (Google Play)</h3>
+                </div>
+                <p class="text-xs text-emerald-100 leading-relaxed" data-i18n="androidGuideDesc">
+                    This app is built as a <strong>Single-File Offline-First Web App</strong>. To package it into an <code>.aab</code> / <code>.apk</code> for Google Play Store:
+                </p>
+                <ol class="text-xs text-emerald-200 space-y-1.5 list-decimal list-inside">
+                    <li data-i18n="androidStep1"><strong>CapacitorJS (Recommended):</strong> Place this HTML file inside <code>www/index.html</code> of a Capacitor project, run <code>npx cap add android</code> and build in <strong>Android Studio</strong>.</li>
+                    <li data-i18n="androidStep2"><strong>PWABuilder / TWA:</strong> Host this file on GitHub Pages / Netlify / Vercel and use <em>PWABuilder.com</em> to generate a store-ready Google Play package.</li>
+                    <li data-i18n="androidStep3"><strong>100% Offline Ready:</strong> All club profiles, players, language preferences, and history are stored locally on the user's device.</li>
+                </ol>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (Android Style) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/95 border-t border-emerald-800/80 backdrop-blur-md">
+        <div class="max-w-xl mx-auto grid grid-cols-4 px-2 py-1.5">
+            <button id="navBtn_tabCalc" onclick="switchBottomTab('tabCalc')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-lime-400 font-bold transition bg-emerald-900/40">
+                <i class="ph ph-calculator text-xl"></i>
+                <span class="text-[11px] mt-0.5" data-i18n="navCalc">Calculator</span>
+            </button>
+            <button id="navBtn_tabPlayers" onclick="switchBottomTab('tabPlayers')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-300/70 hover:text-white transition">
+                <i class="ph ph-users text-xl"></i>
+                <span class="text-[11px] mt-0.5" data-i18n="navPlayers">Players</span>
+            </button>
+            <button id="navBtn_tabReceipt" onclick="switchBottomTab('tabReceipt')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-300/70 hover:text-white transition">
+                <i class="ph ph-whatsapp-logo text-xl"></i>
+                <span class="text-[11px] mt-0.5" data-i18n="navReceipt">Receipt</span>
+            </button>
+            <button id="navBtn_tabSettings" onclick="switchBottomTab('tabSettings')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-300/70 hover:text-white transition">
+                <i class="ph ph-sliders-horizontal text-xl"></i>
+                <span class="text-[11px] mt-0.5" data-i18n="navSettings">Club & App</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Custom Reset Modal -->
+    <div id="resetModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div class="bg-emerald-950 border border-emerald-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-amber-400">
+                <i class="ph ph-warning-circle text-3xl"></i>
+                <h3 class="font-bold text-white text-base" data-i18n="modalResetTitle">Reset Session Calculation?</h3>
+            </div>
+            <p class="text-xs sm:text-sm text-emerald-200" data-i18n="modalResetDesc">
+                Restore default calculation values and payment statuses? Your club name and saved history will not be deleted.
+            </p>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button onclick="closeResetModal()" class="px-3.5 py-2 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-emerald-200 text-xs font-semibold" data-i18n="btnCancel">
+                    Cancel
+                </button>
+                <button onclick="confirmResetAll()" class="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-xs font-bold" data-i18n="btnConfirmReset">
+                    Yes, Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ShuttleSplit Bilingual State (English Default + Bahasa Melayu)
+         */
+        let currentLang = 'en';       // 'en' (Default) or 'ms'
+        let courtCalcMode = 'hourly'; // 'hourly' or 'flat'
+        let splitMode = 'equal';      // 'equal' or 'pergame'
+        let activeTabId = 'tabCalc';
+
+        const i18nDict = {
+            en: {
+                btnSave: 'Save',
+                modeEqualBadge: 'EQUAL SPLIT',
+                modePerGameBadge: 'PAY PER GAME',
+                cardCourtCost: 'Court Cost',
+                cardShuttleCost: 'Shuttle Cost',
+                cardOneGameCost: '1 Game Cost',
+                cardTotalCost: 'Total Cost',
+                lblSplitMethod: 'Player Cost Split Method',
+                btnModeEqual: 'Equal Split',
+                btnModePerGame: 'Pay Per Game',
+                sec1Title: '1. Court Rental Fee',
+                sec1Sub: 'Calculate by hourly rate or flat total',
+                btnHourly: 'Hourly',
+                btnFlat: 'Flat Total',
+                lblRateHour: 'RM / Hour',
+                lblDuration: 'Duration (Hrs)',
+                lblNumCourts: 'No. of Courts',
+                lblFlatCourtTotal: 'Total Court Rental Fee (RM)',
+                lblExtraCost: 'Extra Cost (Drinks/Lights/Misc) RM:',
+                lblCourtSubtotal: 'Total Court Cost:',
+                sec2Title: '2. Shuttlecock Cost (Per Pcs)',
+                sec2Sub: 'Price per piece × total pieces used',
+                btnTubeCalc: 'Tube Calc',
+                lblTubeCalcTitle: 'Calculate From 1 Tube (12 Pcs)',
+                lblTubePrice: '1 Tube Price (RM)',
+                lblPricePerPcsShort: 'Price / Pcs',
+                lblShuttlePricePcs: 'Price Per Piece (RM/Pcs)',
+                lblShuttleUsedPcs: 'Shuttles Used (Pcs)',
+                lblPreset: 'Preset:',
+                lblTotalPlayers: 'Total Players',
+                btnSyncRoster: 'Sync List',
+                lblRounding: 'Fee Rounding',
+                optRoundNone: 'Exact Amount (Cents)',
+                optRound10: 'Round Up RM 0.10',
+                optRound50: 'Round Up RM 0.50',
+                optRound100: 'Round Up RM 1.00',
+                lblPerGamePanelTitle: 'Cost Breakdown Per Game (Match)',
+                optDoubles: 'Doubles (4 Pax/Game)',
+                optSingles: 'Singles (2 Pax/Game)',
+                lblTotalGamesSession: 'Total Games Played',
+                lblShuttlesPerGame: 'Shuttles / 1 Game (Pcs)',
+                lblCostPerPlayerOneGame: 'Cost Per Player / 1 Game:',
+                tabPlayersTitle: 'Player Roster & Collection',
+                tabPlayersSub: 'Mark players who have paid their share',
+                lblCollected: 'Collected:',
+                btnAddPlayer: 'Add',
+                placeholderAddPlayer: 'Add player name...',
+                btnMarkAllPaid: 'Mark All Paid',
+                btnResetStatus: 'Reset Status',
+                tabReceiptTitle: 'Official Receipt & WhatsApp Share',
+                tabReceiptSub: 'Share directly via Android share menu or copy text',
+                btnShareAndroid: 'Share Now (Android)',
+                btnCopyReceipt: 'Copy Receipt Text',
+                lblAppLanguage: 'App & Receipt Language / Bahasa',
+                settingsTitle: 'Club & Session Settings (Generic)',
+                settingsSub: 'Customize your club name, court venue, and treasurer payment details. Saved automatically on your device.',
+                lblClubName: 'Badminton Club / Group Name',
+                lblSessionDate: 'Session Date',
+                lblSessionTime: 'Play Time',
+                lblVenue: 'Court / Hall Name',
+                lblBankAccount: 'Bank Account / DuitNow QR Info',
+                lblFooterNote: 'Receipt Footer Note',
+                historyTitle: 'Saved Session History',
+                btnSaveCurrentSession: '+ Save Current Session',
+                androidGuideTitle: 'Android Publishing Guide (Google Play)',
+                androidGuideDesc: 'This app is built as a <strong>Single-File Offline-First Web App</strong>. To package it into an <code>.aab</code> / <code>.apk</code> for Google Play Store:',
+                androidStep1: '<strong>CapacitorJS (Recommended):</strong> Place this HTML file inside <code>www/index.html</code> of a Capacitor project, run <code>npx cap add android</code> and build in <strong>Android Studio</strong>.',
+                androidStep2: '<strong>PWABuilder / TWA:</strong> Host this file on GitHub Pages / Netlify / Vercel and use <em>PWABuilder.com</em> to generate a store-ready Google Play package.',
+                androidStep3: '<strong>100% Offline Ready:</strong> All club profiles, players, language preferences, and history are stored locally on the user\'s device.',
+                navCalc: 'Calculator',
+                navPlayers: 'Players',
+                navReceipt: 'Receipt',
+                navSettings: 'Club & App',
+                modalResetTitle: 'Reset Session Calculation?',
+                modalResetDesc: 'Restore default calculation values and payment statuses? Your club name and saved history will not be deleted.',
+                btnCancel: 'Cancel',
+                btnConfirmReset: 'Yes, Reset',
+                statusPaid: 'Paid',
+                statusUnpaid: 'Unpaid',
+                unitPax: 'pax',
+                clubFund: 'Club Fund',
+                exactLabel: 'Exact',
+                exactOneGameLabel: 'Exact 1 Game',
+                feePerPlayerBanner: 'Fee Per Player',
+                playersWord: 'Players',
+                feeOneGameBanner: '1 Game Fee',
+                paxPerGameWord: 'Pax/Game',
+                formulaEqualPrefix: 'Formula: (Court',
+                formulaShuttleWord: 'Shuttle',
+                formulaOneGamePrefix: '1 Game Formula: (Court/Game',
+                totalOneGameLabel: '1 Game Total',
+                noHistoryYet: 'No saved sessions yet. Tap "Save" to record a session.',
+                toastSynced: 'Player count synced with roster',
+                toastEnterName: 'Please enter a player name.',
+                toastPlayerAdded: 'added!',
+                toastAllPaid: 'All players marked as Paid!',
+                toastStatusReset: 'Payment status reset.',
+                toastShareOpened: 'Share menu opened!',
+                toastCopied: 'Receipt copied! Ready to paste in WhatsApp.',
+                toastCopyManual: 'Please copy manually.',
+                toastSessionSaved: 'Session saved to History!',
+                toastResetDone: 'Session calculation has been reset.',
+                toastLangChanged: 'Language switched to English'
+            },
+            ms: {
+                btnSave: 'Simpan',
+                modeEqualBadge: 'BAHAGI SAMA RATA',
+                modePerGameBadge: 'IKUT SETIAP GAME',
+                cardCourtCost: 'Kos Court',
+                cardShuttleCost: 'Kos Shuttle',
+                cardOneGameCost: 'Kos 1 Game',
+                cardTotalCost: 'Jumlah Kos',
+                lblSplitMethod: 'Cara Bahagi Bayaran Pemain',
+                btnModeEqual: 'Bahagi Sama Rata',
+                btnModePerGame: 'Ikut Setiap Game',
+                sec1Title: '1. Kos Sewa Gelanggang (Court)',
+                sec1Sub: 'Kira ikut jam atau jumlah keseluruhan',
+                btnHourly: 'Ikut Jam',
+                btnFlat: 'Terus',
+                lblRateHour: 'RM / Jam',
+                lblDuration: 'Tempoh (Jam)',
+                lblNumCourts: 'Bil. Court',
+                lblFlatCourtTotal: 'Jumlah Sewa Semua Court (RM)',
+                lblExtraCost: 'Kos Tambahan (Air/Lampu/Lain) RM:',
+                lblCourtSubtotal: 'Jumlah Kos Court:',
+                sec2Title: '2. Kos Shuttlecock (Per Pcs)',
+                sec2Sub: 'Harga sebiji × bilangan biji digunakan',
+                btnTubeCalc: 'Kira Setin',
+                lblTubeCalcTitle: 'Kira Harga 1 Tin / Tube (12 Biji)',
+                lblTubePrice: 'Harga 1 Tin (RM)',
+                lblPricePerPcsShort: 'Harga Sebiji',
+                lblShuttlePricePcs: 'Harga Sebiji (RM/Pcs)',
+                lblShuttleUsedPcs: 'Bil. Digunakan (Pcs)',
+                lblPreset: 'Preset:',
+                lblTotalPlayers: 'Jumlah Pemain',
+                btnSyncRoster: 'Ikut Senarai',
+                lblRounding: 'Genapkan Bayaran',
+                optRoundNone: 'Harga Tepat (Sen)',
+                optRound10: 'Genap Atas RM 0.10',
+                optRound50: 'Genap Atas RM 0.50',
+                optRound100: 'Genap Atas RM 1.00',
+                lblPerGamePanelTitle: 'Kiraan Kos 1 Game (Per Match)',
+                optDoubles: 'Beregu (4 Org/Game)',
+                optSingles: 'Single (2 Org/Game)',
+                lblTotalGamesSession: 'Jumlah Game Sesi Ini',
+                lblShuttlesPerGame: 'Shuttle / 1 Game (Pcs)',
+                lblCostPerPlayerOneGame: 'Kos Seorang / 1 Game:',
+                tabPlayersTitle: 'Senarai Pemain & Kutipan',
+                tabPlayersSub: 'Tandakan pemain yang sudah bayar',
+                lblCollected: 'Kutip:',
+                btnAddPlayer: 'Tambah',
+                placeholderAddPlayer: 'Tambah nama pemain...',
+                btnMarkAllPaid: 'Tanda Semua Sudah Bayar',
+                btnResetStatus: 'Reset Status',
+                tabReceiptTitle: 'Resit Rasmi & Kongsi ke WhatsApp',
+                tabReceiptSub: 'Boleh kongsi terus menggunakan menu Share Android',
+                btnShareAndroid: 'Kongsi Terus (Android)',
+                btnCopyReceipt: 'Salin Ayat Resit',
+                lblAppLanguage: 'Bahasa Aplikasi & Resit / Language',
+                settingsTitle: 'Tetapan Kelab & Sesi (Generik)',
+                settingsSub: 'Ubah nama kelab, gelanggang, dan akaun bank mengikut kumpulan badminton anda. Disimpan secara automatik.',
+                lblClubName: 'Nama Kelab / Kumpulan Badminton',
+                lblSessionDate: 'Tarikh Sesi',
+                lblSessionTime: 'Waktu Main',
+                lblVenue: 'Nama Gelanggang / Dewan',
+                lblBankAccount: 'No. Akaun Bank / DuitNow QR Bendahari',
+                lblFooterNote: 'Nota Kaki Resit',
+                historyTitle: 'Rekod Sejarah Sesi',
+                btnSaveCurrentSession: '+ Simpan Sesi Semasa',
+                androidGuideTitle: 'Panduan Publish ke Android (Google Play)',
+                androidGuideDesc: 'Aplikasi ini dibina dengan seni bina <strong>Single-File Offline-First Web App</strong>. Untuk menjadikannya fail <code>.aab</code> / <code>.apk</code> bagi Google Play Store:',
+                androidStep1: '<strong>Kaedah CapacitorJS (Disyorkan):</strong> Letakkan fail HTML ini di dalam folder <code>www/index.html</code> projek Capacitor, jalankan <code>npx cap add android</code> dan bina terus di <strong>Android Studio</strong>.',
+                androidStep2: '<strong>Kaedah PWABuilder / TWA:</strong> Hostkan fail ini di GitHub Pages / Netlify / Vercel dan gunakan <em>PWABuilder.com</em> untuk menjana pakej Google Play Store sedia muat naik.',
+                androidStep3: '<strong>100% Luar Talian (Offline):</strong> Semua data kelab, pemain, bahasa, dan sejarah disimpan di dalam storan peranti pengguna.',
+                navCalc: 'Kiraan',
+                navPlayers: 'Pemain',
+                navReceipt: 'Resit',
+                navSettings: 'Kelab & App',
+                modalResetTitle: 'Reset Kiraan Sesi?',
+                modalResetDesc: 'Tetapkan semula nilai kiraan dan status bayaran kepada asal? Nama kelab dan sejarah sesi tidak akan dipadam.',
+                btnCancel: 'Batal',
+                btnConfirmReset: 'Ya, Reset',
+                statusPaid: 'Bayar',
+                statusUnpaid: 'Belum',
+                unitPax: 'org',
+                clubFund: 'Tabung',
+                exactLabel: 'Tepat',
+                exactOneGameLabel: 'Tepat 1 Game',
+                feePerPlayerBanner: 'Bayaran Seorang',
+                playersWord: 'Pemain',
+                feeOneGameBanner: 'Bayaran 1 Game',
+                paxPerGameWord: 'Org/Game',
+                formulaEqualPrefix: 'Formula: (Court',
+                formulaShuttleWord: 'Shuttle',
+                formulaOneGamePrefix: 'Formula 1 Game: (Court/Game',
+                totalOneGameLabel: 'Kos 1 Game',
+                noHistoryYet: 'Belum ada sesi disimpan. Tekan "Simpan" untuk merekod sesi.',
+                toastSynced: 'Bilangan pemain disamakan',
+                toastEnterName: 'Sila masukkan nama pemain.',
+                toastPlayerAdded: 'ditambah!',
+                toastAllPaid: 'Semua ditandakan Sudah Bayar!',
+                toastStatusReset: 'Status bayaran direset.',
+                toastShareOpened: 'Menu kongsi dibuka!',
+                toastCopied: 'Resit disalin! Sedia tampal di WhatsApp.',
+                toastCopyManual: 'Sila salin secara manual.',
+                toastSessionSaved: 'Sesi berjaya disimpan ke dalam Sejarah!',
+                toastResetDone: 'Kiraan sesi telah direset.',
+                toastLangChanged: 'Bahasa ditukar ke Bahasa Melayu'
+            }
+        };
+
+        function t(key) {
+            return (i18nDict[currentLang] && i18nDict[currentLang][key]) || i18nDict.en[key] || key;
+        }
+
+        function getDefaultPlayers(lang = currentLang) {
+            const prefix = lang === 'ms' ? 'Pemain' : 'Player';
+            return [
+                { id: 1, name: `${prefix} 1 (Host)`, games: 3, paid: true },
+                { id: 2, name: `${prefix} 2`, games: 3, paid: true },
+                { id: 3, name: `${prefix} 3`, games: 3, paid: false },
+                { id: 4, name: `${prefix} 4`, games: 3, paid: false },
+                { id: 5, name: `${prefix} 5`, games: 3, paid: false },
+                { id: 6, name: `${prefix} 6`, games: 3, paid: false },
+                { id: 7, name: `${prefix} 7`, games: 3, paid: false },
+                { id: 8, name: `${prefix} 8`, games: 3, paid: false }
+            ];
+        }
+
+        let players = [];
+        let sessionHistory = [];
+
+        window.onload = function () {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const dateInput = document.getElementById('sessionDate');
+            if (dateInput) {
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+
+            loadSavedState();
+            applyLanguageUI();
+            calculateAll();
+            renderHistoryList();
+        };
+
+        function toggleLanguage() {
+            const nextLang = currentLang === 'en' ? 'ms' : 'en';
+            setLanguage(nextLang, true);
+        }
+
+        function setLanguage(lang, showNotification = true) {
+            currentLang = lang === 'ms' ? 'ms' : 'en';
+            document.documentElement.lang = currentLang;
+
+            // Translate generic default input fields if user hasn't customized them
+            const clubInput = document.getElementById('clubNameInput');
+            if (clubInput.value === 'Your Badminton Club' || clubInput.value === 'Kelab Badminton Kita') {
+                clubInput.value = currentLang === 'ms' ? 'Kelab Badminton Kita' : 'Your Badminton Club';
+            }
+
+            const venueInput = document.getElementById('sessionVenue');
+            if (venueInput.value === 'Main Badminton Arena' || venueInput.value === 'Dewan Badminton Utama') {
+                venueInput.value = currentLang === 'ms' ? 'Dewan Badminton Utama' : 'Main Badminton Arena';
+            }
+
+            const accInput = document.getElementById('paymentAccountInfo');
+            if (accInput.value.includes('(Treasurer)') || accInput.value.includes('(Bendahari)')) {
+                accInput.value = currentLang === 'ms'
+                    ? 'Maybank 1620-XXXX-XXXX (Bendahari) / DuitNow QR'
+                    : 'Maybank 1620-XXXX-XXXX (Treasurer) / DuitNow QR';
+            }
+
+            const noteInput = document.getElementById('paymentExtraNote');
+            if (noteInput.value.includes('Thank you everyone!') || noteInput.value.includes('Terima kasih semua!')) {
+                noteInput.value = currentLang === 'ms'
+                    ? 'Terima kasih semua! Jumpa next game 🏸🔥'
+                    : 'Thank you everyone! See you next game 🏸🔥';
+            }
+
+            // Translate default player names if untouched
+            players.forEach(p => {
+                if (currentLang === 'ms') {
+                    p.name = p.name.replace(/^Player (\d+)/, 'Pemain $1');
+                } else {
+                    p.name = p.name.replace(/^Pemain (\d+)/, 'Player $1');
+                }
+            });
+
+            applyLanguageUI();
+            calculateAll();
+            renderHistoryList();
+
+            if (showNotification) {
+                showToast(t('toastLangChanged'));
+            }
+        }
+
+        function applyLanguageUI() {
+            // Update header date locale
+            const today = new Date();
+            const locale = currentLang === 'ms' ? 'ms-MY' : 'en-MY';
+            document.getElementById('headerDateDisplay').textContent =
+                today.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+
+            // Update top badge & settings language buttons
+            document.getElementById('langBadgeText').textContent = currentLang === 'en' ? 'EN' : 'BM';
+            const btnEN = document.getElementById('btnLangEN');
+            const btnMS = document.getElementById('btnLangMS');
+            if (currentLang === 'en') {
+                btnEN.className = 'py-2 px-3 rounded-lg font-bold text-xs bg-lime-400 text-emerald-950 transition shadow';
+                btnMS.className = 'py-2 px-3 rounded-lg font-bold text-xs text-emerald-200 hover:text-white transition';
+            } else {
+                btnMS.className = 'py-2 px-3 rounded-lg font-bold text-xs bg-lime-400 text-emerald-950 transition shadow';
+                btnEN.className = 'py-2 px-3 rounded-lg font-bold text-xs text-emerald-200 hover:text-white transition';
+            }
+
+            // Update all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (key.startsWith('android')) {
+                    el.innerHTML = t(key);
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+
+            // Update placeholders
+            const newPlayerInput = document.getElementById('newPlayerNameInput');
+            if (newPlayerInput) newPlayerInput.placeholder = t('placeholderAddPlayer');
+
+            // Update active split mode badge
+            const badge = document.getElementById('activeModeBadge');
+            if (badge) {
+                badge.textContent = splitMode === 'equal' ? t('modeEqualBadge') : t('modePerGameBadge');
+            }
+        }
+
+        /**
+         * Bottom Tab Bar Navigation (Android Style)
+         */
+        function switchBottomTab(tabId) {
+            activeTabId = tabId;
+            const tabs = ['tabCalc', 'tabPlayers', 'tabReceipt', 'tabSettings'];
+            tabs.forEach(id => {
+                const pane = document.getElementById(id);
+                const btn = document.getElementById('navBtn_' + id);
+                if (id === tabId) {
+                    pane.classList.remove('hidden');
+                    btn.className = 'flex flex-col items-center justify-center py-1.5 rounded-xl text-lime-400 font-bold transition bg-emerald-900/40';
+                } else {
+                    pane.classList.add('hidden');
+                    btn.className = 'flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-300/70 hover:text-white transition';
+                }
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success'
+                ? 'bg-lime-400 text-emerald-950 border-lime-300'
+                : 'bg-amber-400 text-emerald-950 border-amber-300';
+
+            toast.className = `${bgClass} border px-4 py-3 rounded-xl shadow-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto`;
+            toast.innerHTML = `<i class="ph ph-check-circle text-lg"></i><span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2400);
+        }
+
+        function setCourtMode(mode) {
+            courtCalcMode = mode;
+            const hourlyBox = document.getElementById('courtHourlyInputs');
+            const flatBox = document.getElementById('courtFlatInputs');
+            const btnHourly = document.getElementById('btnCourtModeHourly');
+            const btnFlat = document.getElementById('btnCourtModeFlat');
+
+            if (mode === 'hourly') {
+                hourlyBox.classList.remove('hidden');
+                flatBox.classList.add('hidden');
+                btnHourly.className = 'px-2.5 py-1 rounded-lg font-semibold bg-lime-400 text-emerald-950 transition';
+                btnFlat.className = 'px-2.5 py-1 rounded-lg font-semibold text-emerald-200 hover:text-white transition';
+            } else {
+                hourlyBox.classList.add('hidden');
+                flatBox.classList.remove('hidden');
+                btnFlat.className = 'px-2.5 py-1 rounded-lg font-semibold bg-lime-400 text-emerald-950 transition';
+                btnHourly.className = 'px-2.5 py-1 rounded-lg font-semibold text-emerald-200 hover:text-white transition';
+            }
+            calculateAll();
+        }
+
+        function switchSplitMode(mode) {
+            splitMode = mode;
+            const tabEqual = document.getElementById('tabModeEqual');
+            const tabPerGame = document.getElementById('tabModePerGame');
+            const badge = document.getElementById('activeModeBadge');
+
+            if (mode === 'equal') {
+                tabEqual.className = 'py-2.5 px-3 rounded-lg font-bold text-xs bg-lime-400 text-emerald-950 transition flex items-center justify-center gap-1.5 shadow';
+                tabPerGame.className = 'py-2.5 px-3 rounded-lg font-bold text-xs text-emerald-200 hover:text-white transition flex items-center justify-center gap-1.5';
+                badge.textContent = t('modeEqualBadge');
+            } else {
+                tabPerGame.className = 'py-2.5 px-3 rounded-lg font-bold text-xs bg-lime-400 text-emerald-950 transition flex items-center justify-center gap-1.5 shadow';
+                tabEqual.className = 'py-2.5 px-3 rounded-lg font-bold text-xs text-emerald-200 hover:text-white transition flex items-center justify-center gap-1.5';
+                badge.textContent = t('modePerGameBadge');
+            }
+            calculateAll();
+        }
+
+        function toggleTubeHelper() {
+            const box = document.getElementById('tubeHelperBox');
+            box.classList.toggle('hidden');
+        }
+
+        function updatePriceFromTube() {
+            const tubePrice = parseFloat(document.getElementById('tubePriceInput').value) || 0;
+            const perPcs = tubePrice / 12;
+            document.getElementById('tubeCalculatedPerPcs').textContent = `RM ${perPcs.toFixed(2)}`;
+            document.getElementById('shuttlePricePerPcs').value = perPcs.toFixed(2);
+            calculateAll();
+        }
+
+        function setShuttlePrice(price) {
+            document.getElementById('shuttlePricePerPcs').value = price.toFixed(2);
+            calculateAll();
+        }
+
+        function adjustValue(inputId, delta, minVal = 0) {
+            const input = document.getElementById(inputId);
+            let current = parseFloat(input.value) || 0;
+            let next = current + delta;
+            if (next < minVal) next = minVal;
+            input.value = Number.isInteger(delta) ? Math.round(next) : next;
+            calculateAll();
+        }
+
+        function adjustPlayers(delta) {
+            adjustValue('totalPlayersInput', delta, 1);
+        }
+
+        function syncPlayerCountWithList() {
+            if (players.length > 0) {
+                document.getElementById('totalPlayersInput').value = players.length;
+                calculateAll();
+                showToast(`${t('toastSynced')} (${players.length}).`);
+            }
+        }
+
+        function applyRounding(amount, mode) {
+            if (mode === 'up10') return Math.ceil(amount * 10) / 10;
+            if (mode === 'up50') return Math.ceil(amount * 2) / 2;
+            if (mode === 'up100') return Math.ceil(amount);
+            return amount;
+        }
+
+        /**
+         * Main Calculation Engine: (Court Cost + Shuttle Per Pcs Cost) ÷ Players
+         */
+        function calculateAll() {
+            const defaultClub = currentLang === 'ms' ? 'Kelab Badminton Kita' : 'Your Badminton Club';
+            const clubName = document.getElementById('clubNameInput').value.trim() || defaultClub;
+            document.getElementById('headerClubName').textContent = clubName;
+
+            // 1. Court Cost
+            let courtCost = 0;
+            if (courtCalcMode === 'hourly') {
+                const rate = parseFloat(document.getElementById('courtRatePerHour').value) || 0;
+                const hours = parseFloat(document.getElementById('courtHours').value) || 0;
+                const courts = parseFloat(document.getElementById('courtCount').value) || 1;
+                courtCost = rate * hours * courts;
+            } else {
+                courtCost = parseFloat(document.getElementById('courtFlatTotal').value) || 0;
+            }
+
+            const extraCost = parseFloat(document.getElementById('extraCost').value) || 0;
+            const totalCourtAndExtra = courtCost + extraCost;
+
+            // 2. Shuttlecock Cost (Per Pcs × Used Count)
+            const shuttlePrice = parseFloat(document.getElementById('shuttlePricePerPcs').value) || 0;
+            const shuttleCount = parseFloat(document.getElementById('shuttleUsedCount').value) || 0;
+            const totalShuttleCost = shuttlePrice * shuttleCount;
+
+            // 3. Session Grand Total
+            const grandTotalSession = totalCourtAndExtra + totalShuttleCost;
+
+            // 4. Players & Games
+            const totalPlayers = Math.max(1, parseInt(document.getElementById('totalPlayersInput').value) || 1);
+            const totalGames = Math.max(1, parseInt(document.getElementById('totalGamesPlayed').value) || 1);
+            const roundingMode = document.getElementById('roundingMode').value;
+
+            // 5. Equal Split Calculation
+            const exactEqualPerPerson = grandTotalSession / totalPlayers;
+            const roundedEqualPerPerson = applyRounding(exactEqualPerPerson, roundingMode);
+            const courtPerPerson = totalCourtAndExtra / totalPlayers;
+            const shuttlePerPerson = totalShuttleCost / totalPlayers;
+
+            // 6. Per Game Calculation (Per Match)
+            const playersPerGame = parseInt(document.getElementById('playersPerGameSelect').value) || 4;
+            const shuttlesPerSingleGame = parseFloat(document.getElementById('shuttlesPerSingleGame').value) || 1;
+            const singleGameShuttleCost = shuttlesPerSingleGame * shuttlePrice;
+            const singleGameCourtCost = totalCourtAndExtra / totalGames;
+            const singleGameTotalCost = singleGameCourtCost + singleGameShuttleCost;
+            const exactFeePerPlayerPerGame = singleGameTotalCost / playersPerGame;
+            const roundedFeePerPlayerPerGame = applyRounding(exactFeePerPlayerPerGame, roundingMode);
+
+            // 7. Update Subtotal Cards
+            document.getElementById('cardCourtSubtotal').textContent = `RM ${totalCourtAndExtra.toFixed(2)}`;
+            document.getElementById('shuttleCalcBreakdownText').textContent = `${shuttleCount} pcs × RM ${shuttlePrice.toFixed(2)}:`;
+            document.getElementById('cardShuttleSubtotal').textContent = `RM ${totalShuttleCost.toFixed(2)}`;
+
+            // 8. Update Per Game Panel
+            document.getElementById('singleGameShuttleCostText').textContent =
+                `Shuttle: RM ${singleGameShuttleCost.toFixed(2)} (${shuttlesPerSingleGame} pcs)`;
+            document.getElementById('singleGameCourtCostDisplay').textContent = `Court/Game: RM ${singleGameCourtCost.toFixed(2)}`;
+            document.getElementById('singleGameCourtFormulaText').textContent =
+                `Court/Game: RM ${singleGameCourtCost.toFixed(2)}`;
+            document.getElementById('singleGameFeePerPlayerDisplay').textContent = `RM ${exactFeePerPlayerPerGame.toFixed(2)}`;
+            document.getElementById('singleGameTotalMatchText').textContent =
+                `${t('totalOneGameLabel')} (${playersPerGame} ${t('unitPax')}): RM ${singleGameTotalCost.toFixed(2)}`;
+
+            // 9. Update Sticky Banner
+            const mainPriceLabel = document.getElementById('mainPriceLabel');
+            const displayFeePerPerson = document.getElementById('displayFeePerPerson');
+            const displayExactFeeNote = document.getElementById('displayExactFeeNote');
+            const formulaExplanation = document.getElementById('formulaExplanation');
+
+            if (splitMode === 'equal') {
+                mainPriceLabel.textContent = `${t('feePerPlayerBanner')} (${totalPlayers} ${t('playersWord')}):`;
+                displayFeePerPerson.textContent = `RM ${roundedEqualPerPerson.toFixed(2)}`;
+                displayExactFeeNote.textContent = `${t('exactLabel')}: RM ${exactEqualPerPerson.toFixed(2)}`;
+                formulaExplanation.textContent =
+                    `${t('formulaEqualPrefix')} RM ${totalCourtAndExtra.toFixed(2)} + ${t('formulaShuttleWord')} RM ${totalShuttleCost.toFixed(2)}) ÷ ${totalPlayers} ${t('playersWord')}`;
+            } else {
+                mainPriceLabel.textContent = `${t('feeOneGameBanner')} (${playersPerGame} ${t('paxPerGameWord')}):`;
+                displayFeePerPerson.textContent = `RM ${roundedFeePerPlayerPerGame.toFixed(2)}`;
+                displayExactFeeNote.textContent = `${t('exactOneGameLabel')}: RM ${exactFeePerPlayerPerGame.toFixed(2)}`;
+                formulaExplanation.textContent =
+                    `${t('formulaOneGamePrefix')} RM ${singleGameCourtCost.toFixed(2)} + ${shuttlesPerSingleGame} Pcs Shuttle RM ${singleGameShuttleCost.toFixed(2)}) ÷ ${playersPerGame} ${t('playersWord')}`;
+            }
+
+            // 10. Update 4 Mini Summary Cards
+            document.getElementById('summaryCourtTotal').textContent = `RM ${totalCourtAndExtra.toFixed(2)}`;
+            document.getElementById('summaryCourtPerPerson').textContent = `RM ${courtPerPerson.toFixed(2)} / ${t('unitPax')}`;
+
+            document.getElementById('summaryShuttleTotal').textContent = `RM ${totalShuttleCost.toFixed(2)}`;
+            document.getElementById('summaryShuttlePerPerson').textContent = `RM ${shuttlePerPerson.toFixed(2)} / ${t('unitPax')}`;
+
+            document.getElementById('summaryPerGamePerson').textContent = `RM ${exactFeePerPlayerPerGame.toFixed(2)}`;
+            document.getElementById('summaryPerGameDetail').textContent = `1 game (${shuttlesPerSingleGame} pcs)`;
+
+            document.getElementById('summaryGrandTotal').textContent = `RM ${grandTotalSession.toFixed(2)}`;
+            const totalCollectedIfEqual = roundedEqualPerPerson * totalPlayers;
+            const surplus = Math.max(0, totalCollectedIfEqual - grandTotalSession);
+            document.getElementById('summarySurplusNote').textContent = `${t('clubFund')}: +RM ${surplus.toFixed(2)}`;
+
+            renderPlayerList(roundedEqualPerPerson, exactFeePerPlayerPerGame, roundingMode);
+            updateWhatsappPreview();
+            saveStateToStorage();
+        }
+
+        function getPlayerPayAmount(player, roundedEqualFee, exactPerGameFee, roundingMode) {
+            if (splitMode === 'equal') {
+                return roundedEqualFee;
+            } else {
+                const raw = (player.games || 1) * exactPerGameFee;
+                return applyRounding(raw, roundingMode);
+            }
+        }
+
+        function renderPlayerList(roundedEqualFee, exactPerGameFee, roundingMode) {
+            const container = document.getElementById('playerListContainer');
+            document.getElementById('rosterCountLabel').textContent = players.length;
+
+            let collectedTotal = 0;
+            let paidCount = 0;
+
+            container.innerHTML = '';
+
+            players.forEach((player, index) => {
+                const amountToPay = getPlayerPayAmount(player, roundedEqualFee, exactPerGameFee, roundingMode);
+                if (player.paid) {
+                    collectedTotal += amountToPay;
+                    paidCount++;
+                }
+
+                const card = document.createElement('div');
+                card.className = `flex items-center justify-between gap-2 p-3 rounded-xl border transition ${
+                    player.paid
+                        ? 'bg-emerald-900/60 border-lime-400/50'
+                        : 'bg-emerald-950/60 border-emerald-800/80'
+                }`;
+
+                const gameControlHtml = splitMode === 'pergame' ? `
+                    <div class="flex items-center gap-1 bg-emerald-950 px-2 py-1 rounded-lg border border-emerald-700 text-xs">
+                        <button onclick="changePlayerGames(${player.id}, -1)" class="text-lime-300 font-bold px-1">-</button>
+                        <span class="text-white font-semibold">${player.games}g</span>
+                        <button onclick="changePlayerGames(${player.id}, 1)" class="text-lime-300 font-bold px-1">+</button>
+                    </div>
+                ` : '';
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-6 h-6 rounded-lg bg-emerald-800 text-emerald-200 text-xs font-bold flex items-center justify-center shrink-0">
+                            ${index + 1}
+                        </span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-white truncate">${escapeHtml(player.name)}</p>
+                            <p class="text-xs font-sport ${player.paid ? 'text-lime-300' : 'text-amber-300'} font-bold">
+                                RM ${amountToPay.toFixed(2)}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${gameControlHtml}
+                        <button onclick="togglePlayerPaid(${player.id})" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                            player.paid
+                                ? 'bg-lime-400 text-emerald-950 shadow-sm'
+                                : 'bg-emerald-900 text-amber-300 border border-amber-400/30'
+                        }">
+                            <i class="ph ${player.paid ? 'ph-check-circle-fill' : 'ph-clock'} text-sm"></i>
+                            <span>${player.paid ? t('statusPaid') : t('statusUnpaid')}</span>
+                        </button>
+                        <button onclick="removePlayer(${player.id})" class="p-1.5 text-emerald-400 hover:text-red-400 transition" title="Delete">
+                            <i class="ph ph-trash text-sm"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('collectedAmountDisplay').textContent = `RM ${collectedTotal.toFixed(2)}`;
+            document.getElementById('collectedCountDisplay').textContent = `(${paidCount}/${players.length})`;
+        }
+
+        function addPlayer() {
+            const input = document.getElementById('newPlayerNameInput');
+            const name = input.value.trim();
+            if (!name) {
+                showToast(t('toastEnterName'), 'warn');
+                return;
+            }
+            players.push({
+                id: Date.now(),
+                name: name,
+                games: 3,
+                paid: false
+            });
+            input.value = '';
+            document.getElementById('totalPlayersInput').value = players.length;
+            calculateAll();
+            showToast(`${name} ${t('toastPlayerAdded')}`);
+        }
+
+        function togglePlayerPaid(id) {
+            const player = players.find(p => p.id === id);
+            if (player) {
+                player.paid = !player.paid;
+                calculateAll();
+            }
+        }
+
+        function changePlayerGames(id, delta) {
+            const player = players.find(p => p.id === id);
+            if (player) {
+                player.games = Math.max(1, (player.games || 1) + delta);
+                calculateAll();
+            }
+        }
+
+        function removePlayer(id) {
+            players = players.filter(p => p.id !== id);
+            if (players.length > 0) {
+                document.getElementById('totalPlayersInput').value = players.length;
+            }
+            calculateAll();
+        }
+
+        function markAllPaid(status) {
+            players.forEach(p => p.paid = status);
+            calculateAll();
+            showToast(status ? t('toastAllPaid') : t('toastStatusReset'));
+        }
+
+        function updateWhatsappPreview() {
+            const defaultClub = currentLang === 'ms' ? 'KELAB BADMINTON KITA' : 'YOUR BADMINTON CLUB';
+            const clubName = (document.getElementById('clubNameInput').value || defaultClub).toUpperCase();
+            const venue = document.getElementById('sessionVenue').value || 'Badminton Arena';
+            const dateVal = document.getElementById('sessionDate').value;
+            const timeVal = document.getElementById('sessionTime').value || '-';
+
+            const courtSubtotal = document.getElementById('cardCourtSubtotal').textContent;
+            const shuttlePrice = parseFloat(document.getElementById('shuttlePricePerPcs').value) || 0;
+            const shuttleCount = parseFloat(document.getElementById('shuttleUsedCount').value) || 0;
+            const shuttleSubtotal = document.getElementById('cardShuttleSubtotal').textContent;
+            const grandTotal = document.getElementById('summaryGrandTotal').textContent;
+            const totalPlayers = parseInt(document.getElementById('totalPlayersInput').value) || 1;
+            const feeDisplay = document.getElementById('displayFeePerPerson').textContent;
+            const perGameFee = document.getElementById('singleGameFeePerPlayerDisplay').textContent;
+            const shuttlesPerGame = document.getElementById('shuttlesPerSingleGame').value;
+
+            const roundingMode = document.getElementById('roundingMode').value;
+            const grandTotalNum = parseFloat(grandTotal.replace('RM ', '')) || 0;
+            const roundedEqualFee = applyRounding(grandTotalNum / totalPlayers, roundingMode);
+            const exactPerGameFee = parseFloat(perGameFee.replace('RM ', '')) || 0;
+
+            const accInfo = document.getElementById('paymentAccountInfo').value;
+            const extraNote = document.getElementById('paymentExtraNote').value;
+
+            let rosterLines = '';
+            players.forEach((p, idx) => {
+                const amt = getPlayerPayAmount(p, roundedEqualFee, exactPerGameFee, roundingMode);
+                const statusIcon = p.paid ? '✅' : '⏳';
+                const gameTag = splitMode === 'pergame' ? ` (${p.games}g)` : '';
+                rosterLines += `${idx + 1}. ${p.name}${gameTag} - RM ${amt.toFixed(2)} ${statusIcon}\n`;
+            });
+
+            let text = '';
+            if (currentLang === 'en') {
+                const modeLine = splitMode === 'equal'
+                    ? `💰 *FEE PER PLAYER: ${feeDisplay}* (${totalPlayers} players)`
+                    : `💰 *FEE PER GAME: ${perGameFee} / player* (${shuttlesPerGame} pcs shuttle/game)`;
+
+                text =
+`🏸 *${clubName}* 🏸
+*COURT & SHUTTLECOCK SESSION RECEIPT*
+━━━━━━━━━━━━━━━━━━━━
+📅 *Date:* ${dateVal}
+⏰ *Time:* ${timeVal}
+📍 *Venue:* ${venue}
+
+📊 *SESSION COST BREAKDOWN:*
+• Court Fee (+Misc): *${courtSubtotal}*
+• Shuttlecocks: *${shuttleCount} pcs × RM ${shuttlePrice.toFixed(2)} = ${shuttleSubtotal}*
+• *Grand Total:* *${grandTotal}*
+• 1 Game Cost: *${perGameFee}/player*
+
+${modeLine}
+━━━━━━━━━━━━━━━━━━━━
+📋 *PLAYER LIST & PAYMENT:*
+${rosterLines.trim()}
+
+💳 *Pay To:*
+${accInfo}
+
+_${extraNote}_`;
+            } else {
+                const modeLine = splitMode === 'equal'
+                    ? `💰 *BAYARAN SEORANG: ${feeDisplay}* (${totalPlayers} pemain)`
+                    : `💰 *BAYARAN 1 GAME: ${perGameFee} / seorang* (${shuttlesPerGame} pcs shuttle/game)`;
+
+                text =
+`🏸 *${clubName}* 🏸
+*RESIT KIRAAN COURT & SHUTTLECOCK*
+━━━━━━━━━━━━━━━━━━━━
+📅 *Tarikh:* ${dateVal}
+⏰ *Masa:* ${timeVal}
+📍 *Lokasi:* ${venue}
+
+📊 *PECAHAN KOS SESI:*
+• Sewa Court (+Lain): *${courtSubtotal}*
+• Shuttlecock: *${shuttleCount} pcs × RM ${shuttlePrice.toFixed(2)} = ${shuttleSubtotal}*
+• *Jumlah Keseluruhan:* *${grandTotal}*
+• Kos 1 Game: *${perGameFee}/seorang*
+
+${modeLine}
+━━━━━━━━━━━━━━━━━━━━
+📋 *SENARAI PEMAIN & BAYARAN:*
+${rosterLines.trim()}
+
+💳 *Bayaran Ke:*
+${accInfo}
+
+_${extraNote}_`;
+            }
+
+            document.getElementById('whatsappPreviewText').value = text;
+        }
+
+        /**
+         * Native Android Share (Web Share API)
+         */
+        async function shareNativeAndroid() {
+            const text = document.getElementById('whatsappPreviewText').value;
+            const clubName = document.getElementById('clubNameInput').value || 'Badminton Receipt';
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: `${clubName} Receipt`,
+                        text: text
+                    });
+                    showToast(t('toastShareOpened'));
+                } catch (err) {
+                    // User cancelled share
+                }
+            } else {
+                copyWhatsappSummary();
+            }
+        }
+
+        function copyWhatsappSummary() {
+            const textarea = document.getElementById('whatsappPreviewText');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                showToast(t('toastCopied'));
+            } catch (err) {
+                showToast(t('toastCopyManual'), 'warn');
+            }
+            window.getSelection().removeAllRanges();
+        }
+
+        function saveSessionToHistory() {
+            const dateVal = document.getElementById('sessionDate').value;
+            const venue = document.getElementById('sessionVenue').value;
+            const grandTotal = document.getElementById('summaryGrandTotal').textContent;
+            const feePerPerson = document.getElementById('displayFeePerPerson').textContent;
+            const totalPlayers = document.getElementById('totalPlayersInput').value;
+
+            sessionHistory.unshift({
+                id: Date.now(),
+                date: dateVal,
+                venue: venue,
+                grandTotal: grandTotal,
+                feePerPerson: feePerPerson,
+                playersCount: totalPlayers
+            });
+
+            if (sessionHistory.length > 15) sessionHistory.pop();
+            saveStateToStorage();
+            renderHistoryList();
+            showToast(t('toastSessionSaved'));
+        }
+
+        function renderHistoryList() {
+            const container = document.getElementById('historyListContainer');
+            if (!container) return;
+
+            if (sessionHistory.length === 0) {
+                container.innerHTML = `<p class="text-emerald-400/70 italic">${t('noHistoryYet')}</p>`;
+                return;
+            }
+
+            const totalLabel = currentLang === 'ms' ? 'Jumlah' : 'Total';
+            const playersLabel = currentLang === 'ms' ? 'Pemain' : 'Players';
+
+            container.innerHTML = sessionHistory.map(item => `
+                <div class="flex items-center justify-between bg-emerald-900/50 border border-emerald-800 rounded-xl p-2.5">
+                    <div>
+                        <p class="font-bold text-white">${escapeHtml(item.venue)} <span class="text-emerald-400 font-normal">(${item.date})</span></p>
+                        <p class="text-[11px] text-emerald-300">${totalLabel}: ${item.grandTotal} • ${item.playersCount} ${playersLabel}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-sport font-bold text-lime-300 text-sm">${item.feePerPerson}/${t('unitPax')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openResetModal() {
+            const modal = document.getElementById('resetModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('resetModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function confirmResetAll() {
+            players = getDefaultPlayers(currentLang);
+            document.getElementById('courtRatePerHour').value = 20;
+            document.getElementById('courtHours').value = 2;
+            document.getElementById('courtCount').value = 2;
+            document.getElementById('courtFlatTotal').value = 80;
+            document.getElementById('extraCost').value = 0;
+            document.getElementById('shuttlePricePerPcs').value = '9.00';
+            document.getElementById('shuttleUsedCount').value = 10;
+            document.getElementById('totalPlayersInput').value = players.length;
+            document.getElementById('totalGamesPlayed').value = 6;
+            document.getElementById('shuttlesPerSingleGame').value = 2;
+            setCourtMode('hourly');
+            switchSplitMode('equal');
+            closeResetModal();
+            calculateAll();
+            showToast(t('toastResetDone'));
+        }
+
+        function saveStateToStorage() {
+            try {
+                const state = {
+                    lang: currentLang,
+                    clubName: document.getElementById('clubNameInput').value,
+                    venue: document.getElementById('sessionVenue').value,
+                    time: document.getElementById('sessionTime').value,
+                    courtCalcMode,
+                    splitMode,
+                    courtRatePerHour: document.getElementById('courtRatePerHour').value,
+                    courtHours: document.getElementById('courtHours').value,
+                    courtCount: document.getElementById('courtCount').value,
+                    courtFlatTotal: document.getElementById('courtFlatTotal').value,
+                    extraCost: document.getElementById('extraCost').value,
+                    shuttlePricePerPcs: document.getElementById('shuttlePricePerPcs').value,
+                    shuttleUsedCount: document.getElementById('shuttleUsedCount').value,
+                    totalPlayersInput: document.getElementById('totalPlayersInput').value,
+                    totalGamesPlayed: document.getElementById('totalGamesPlayed').value,
+                    shuttlesPerSingleGame: document.getElementById('shuttlesPerSingleGame').value,
+                    roundingMode: document.getElementById('roundingMode').value,
+                    paymentAccountInfo: document.getElementById('paymentAccountInfo').value,
+                    paymentExtraNote: document.getElementById('paymentExtraNote').value,
+                    players,
+                    sessionHistory
+                };
+                localStorage.setItem('shuttlesplit_generic_android_v3', JSON.stringify(state));
+            } catch (e) {}
+        }
+
+        function loadSavedState() {
+            try {
+                const raw = localStorage.getItem('shuttlesplit_generic_android_v3');
+                if (!raw) {
+                    currentLang = 'en'; // Default English
+                    players = getDefaultPlayers('en');
+                    return;
+                }
+                const state = JSON.parse(raw);
+                currentLang = state.lang === 'ms' ? 'ms' : 'en';
+                if (state.clubName) document.getElementById('clubNameInput').value = state.clubName;
+                if (state.venue) document.getElementById('sessionVenue').value = state.venue;
+                if (state.time) document.getElementById('sessionTime').value = state.time;
+                if (state.courtRatePerHour) document.getElementById('courtRatePerHour').value = state.courtRatePerHour;
+                if (state.courtHours) document.getElementById('courtHours').value = state.courtHours;
+                if (state.courtCount) document.getElementById('courtCount').value = state.courtCount;
+                if (state.courtFlatTotal) document.getElementById('courtFlatTotal').value = state.courtFlatTotal;
+                if (state.extraCost) document.getElementById('extraCost').value = state.extraCost;
+                if (state.shuttlePricePerPcs) document.getElementById('shuttlePricePerPcs').value = state.shuttlePricePerPcs;
+                if (state.shuttleUsedCount) document.getElementById('shuttleUsedCount').value = state.shuttleUsedCount;
+                if (state.totalPlayersInput) document.getElementById('totalPlayersInput').value = state.totalPlayersInput;
+                if (state.totalGamesPlayed) document.getElementById('totalGamesPlayed').value = state.totalGamesPlayed;
+                if (state.shuttlesPerSingleGame) document.getElementById('shuttlesPerSingleGame').value = state.shuttlesPerSingleGame;
+                if (state.roundingMode) document.getElementById('roundingMode').value = state.roundingMode;
+                if (state.paymentAccountInfo) document.getElementById('paymentAccountInfo').value = state.paymentAccountInfo;
+                if (state.paymentExtraNote) document.getElementById('paymentExtraNote').value = state.paymentExtraNote;
+
+                players = Array.isArray(state.players) && state.players.length > 0
+                    ? state.players
+                    : getDefaultPlayers(currentLang);
+                sessionHistory = Array.isArray(state.sessionHistory) ? state.sessionHistory : [];
+
+                if (state.courtCalcMode) setCourtMode(state.courtCalcMode);
+                if (state.splitMode) switchSplitMode(state.splitMode);
+            } catch (e) {
+                currentLang = 'en';
+                players = getDefaultPlayers('en');
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
